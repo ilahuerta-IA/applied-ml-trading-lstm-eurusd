@@ -103,6 +103,5 @@ Contributions, issues, and feature requests are welcome. Please feel free to for
 
 ## License
 This project is licensed under the MIT License - see the `LICENSE` file for details.
-*(Create a file named `LICENSE` in your repository and paste the MIT license text into it. You can easily find templates online).*
 
 ---
