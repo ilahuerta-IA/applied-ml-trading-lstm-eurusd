@@ -18,7 +18,7 @@ This project draws inspiration and context from:
 *   **Asset:** EURUSD (Euro / US Dollar)
 *   **Frequency:** 5-minute intervals
 *   **Period:** 1 year (for initial development and tuning)
-*   **Source:** `EURUSD_5m_1Yea.csv` (Included in the repository or specify download instructions if it's too large/proprietary)
+*   **Source:** `EURUSD_5m_1Yea.csv` (Included in the repository)
 *   **Columns used:** `Date`, `Time`, `Close`
 
 ## Features
