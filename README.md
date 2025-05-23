@@ -90,12 +90,14 @@ Original Scale:
 ![Scaled Close Price (Test Set)](https://github.com/user-attachments/assets/e88d4c17-b966-4ee4-96e1-271c59b578cc)
 
 
+## Hyperparameter Tuning Experiments
+Details on experiments conducted for hyperparameter tuning (e.g., `WINDOW` size optimization) can be found in [EXPERIMENTS.md](EXPERIMENTS.md).
+
 ## Future Work & Improvements
 *   Extensive hyperparameter tuning (WINDOW size, LSTM units, layers, dropout rates, batch size, learning rate).
 *   Testing with larger datasets (5-year, 10-year historical data).
 *   Incorporating additional features (e.g., trading volume, technical indicators like SMA, RSI).
 *   Exploring different scaling techniques.
-*   Investigating methods to handle non-trading periods (weekends) more explicitly.
 *   Comparing LSTM performance against other time series models (e.g., ARIMA, Prophet) or simpler baselines.
 
 ## Contributing
