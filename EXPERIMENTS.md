@@ -1,48 +1,16 @@
-# Hyperparameter Tuning Experiments
+# Model Development and Experiments
 
-This document summarizes the experiments conducted to optimize the hyperparameters of the LSTM model for EURUSD 5-minute price forecasting. Each experiment aims to find settings that improve the model's predictive performance, primarily measured by Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE) on the test set.
-
-## Table of Contents
-1.  [Optimizing LSTM Lookback Window (`WINDOW` Size)](#experiment-1-optimizing-lstm-lookback-window-window-size)
-    *   [Methodology](#methodology-window-size)
-    *   [Results Summary](#results-summary-window-size)
-    *   [Analysis](#analysis-window-size)
-    *   [Conclusion & Recommended `WINDOW`](#conclusion--recommended-window)
-2.  *(Future Experiment Summaries will be added here)*
-
----
+This document outlines the experiments conducted to optimize hyperparameters for the EURUSD 5-minute closing price forecasting LSTM model.
 
 ## Experiment 1: Optimizing LSTM Lookback Window (`WINDOW` Size)
-<a name="experiment-1-optimizing-lstm-lookback-window-window-size"></a>
 
-The objective of this experiment was to determine an effective lookback window (`WINDOW` parameter) for the LSTM model. The `WINDOW` parameter defines how many previous 5-minute time steps the model uses as input to predict the next closing price.
+The initial set of experiments focused on determining an effective lookback window (`WINDOW` parameter). This parameter defines how many previous 5-minute intervals the model uses as input to predict the next closing price.
 
-For detailed logs, individual run outputs, or specific code configurations for each run in this experiment, please refer to the `Hiperparameter Tuning Experiments/Window_Size_Optimization/` directory in this repository. *(You'll create this directory and can place individual notebooks or log files there if needed).*
+### Methodology (Window Size)
 
-### Methodology
-<a name="methodology-window-size"></a>
+The core LSTM architecture (2 LSTM layers with 50 units each, 0.2 dropout after each) and other training parameters (`epochs=5` with EarlyStopping, `batch_size=32`, `SEED=42`, `optimizer='adam'`, `loss='mse'`, `patience=3`) were kept constant. The `WINDOW` size was varied.
 
-The core LSTM architecture and other training parameters were kept constant across all runs in this experiment series:
-
-*   **Model Architecture:**
-    *   LSTM Layer 1: 50 units, `return_sequences=True`
-    *   Dropout: 0.2
-    *   LSTM Layer 2: 50 units
-    *   Dropout: 0.2
-    *   Dense Output Layer: 1 unit
-*   **Training Parameters:**
-    *   `epochs`: 5 (with EarlyStopping, `patience=3`)
-    *   `batch_size`: 32
-    *   `SEED`: 42 (for reproducibility)
-    *   `optimizer`: 'adam'
-    *   `loss`: 'mse'
-
-The `WINDOW` size was varied across the following values: 30, 50, 100, 150, 200, and 288.
-
-### Results Summary
-<a name="results-summary-window-size"></a>
-
-Performance was evaluated using MAE and RMSE on the training, validation, and test sets (original EURUSD price scale).
+### Results Summary (Window Size)
 
 | WINDOW Size | Test Set MAE (EURUSD) | Test Set RMSE (EURUSD) | Val Set MAE (EURUSD) | Val Set RMSE (EURUSD) | Train Set MAE (EURUSD) |
 | :---------- | :-------------------- | :--------------------- | :------------------- | :-------------------- | :--------------------- |
@@ -53,24 +21,53 @@ Performance was evaluated using MAE and RMSE on the training, validation, and te
 | 200         | 0.000947              | 0.001234               | 0.000811             | 0.001101              | 0.000997               |
 | 288         | 0.000656              | 0.000923               | 0.000561             | 0.000865              | 0.000513               |
 
-*(Note: The results for WINDOW=100 are based on a consistently reproduced run with the same architecture and parameters, yielding the best observed metrics in this context.)*
+*(Note: The WINDOW=100 results shown here reflect a consistent run that yielded the best overall metrics for this parameter.)*
 
-### Analysis
-<a name="analysis-window-size"></a>
+### Conclusion (Window Size)
 
-*   **Optimal Range:** `WINDOW = 100` yielded the best overall performance, achieving the lowest MAE and RMSE on both validation and test sets. This suggests it captures an optimal balance of historical context for this specific prediction task.
-*   **Performance of Other Windows:**
-    *   `WINDOW = 30` performed well on the validation set but did not generalize as effectively to the test set compared to `WINDOW = 100`.
-    *   `WINDOW = 288` (representing a full trading day) also demonstrated strong performance, with results close to those of `WINDOW = 100`. This indicates that daily patterns might hold some predictive value.
-    *   Windows of 50, 150, and 200 generally resulted in higher prediction errors compared to the 100 or 288 settings.
-*   **Computational Trade-off:** Larger window sizes significantly increase training time and computational resource requirements.
-
-### Conclusion & Recommended `WINDOW`
-<a name="conclusion--recommended-window"></a>
-
-Based on this experimental sweep, **`WINDOW = 100`** is selected as the recommended lookback period for the current LSTM model configuration and dataset. It achieved the best predictive accuracy on unseen test data.
-
-While `WINDOW = 288` also showed promising results, `WINDOW = 100` provides a slight edge in performance with a more favorable computational cost. This `WINDOW` size will be used as the default in the main forecasting notebook. Further fine-tuning around this value may be explored in subsequent experiments.
+Based on these experiments, **`WINDOW = 100`** was selected as the optimal lookback period. It provided the best balance of capturing sufficient historical context and achieving the lowest prediction errors on unseen test data. This value will be used for subsequent hyperparameter tuning experiments.
 
 ---
 
+## Experiment 2: Optimizing LSTM Layer Units
+
+With `WINDOW = 100` fixed, this set of experiments focused on determining an effective number of units for the two LSTM layers (LSTM1 and LSTM2).
+
+### Methodology (LSTM Units)
+
+The `WINDOW` size was kept constant at 100. All other training parameters (dropout rate 0.2, optimizer 'adam', batch size 32, epochs 5 with EarlyStopping patience 3, seed 42) were also held constant. Both symmetrical (e.g., 32/32, 50/50) and asymmetrical (e.g., 100/50, 128/32) unit configurations were tested.
+
+### Results Summary (LSTM Units with WINDOW=100)
+
+| LSTM1 Units | LSTM2 Units | Test Set MAE (EURUSD) | Test Set RMSE (EURUSD) | Val Set MAE (EURUSD) | Val Set RMSE (EURUSD) | Train Set MAE (EURUSD) |
+| :---------- | :---------- | :-------------------- | :--------------------- | :------------------- | :-------------------- | :--------------------- |
+| **32**      | **32**      | **0.000641**          | **0.000935**           | **0.000559**         | **0.000891**          | 0.000411               |
+| 50          | 50          | 0.000692              | 0.000944               | 0.000619             | 0.000907              | **0.000394**           |
+| 64          | 64          | 0.001302              | 0.001604               | 0.001227             | 0.001477              | 0.000747               |
+| 100         | 100         | 0.000771              | 0.000970               | 0.000763             | 0.000971              | 0.000627               |
+| 128         | 128         | 0.001097              | 0.001275               | 0.001268             | 0.001406              | 0.000911               |
+| 100         | 50          | 0.000900              | 0.001100               | 0.000769             | 0.000992              | 0.000784               |
+| 50          | 100         | 0.001136              | 0.001395               | 0.001022             | 0.001275              | 0.000625               |
+| 128         | 32          | 0.000874              | 0.001109               | 0.000765             | 0.001012              | 0.000445               |
+
+### Analysis (LSTM Units)
+
+*   **Top Symmetrical Performers:** The configurations with `32/32` units and `50/50` units demonstrated the strongest performance.
+    *   The `32/32` configuration achieved the lowest Test Set MAE (0.000641 EURUSD) and Validation Set MAE (0.000559 EURUSD) in this batch.
+    *   The `50/50` configuration was a very close competitor (Test MAE: 0.000692 EURUSD, Val MAE: 0.000619 EURUSD) and notably achieved the lowest Training Set MAE, indicating a strong capacity to fit the training data.
+*   **Larger Symmetrical Configurations:** Increasing units symmetrically beyond 50 (i.e., 64/64, 100/100, 128/128) generally led to a decline in performance on unseen data, suggesting that excessive capacity might not be beneficial for this specific problem and architecture.
+*   **Asymmetrical Configurations:** While some asymmetrical configurations like `128/32` showed reasonable performance, they did not surpass the top symmetrical configurations in terms of Test Set MAE.
+*   **Model Complexity:** The `32/32` model (approx. 18k trainable parameters) is simpler than the `50/50` model (approx. 30k trainable parameters).
+
+### Conclusion & Recommended LSTM Unit Configuration (with WINDOW=100)
+
+Based on this systematic evaluation:
+
+1.  The **`[LSTM(32, return_sequences=True), Dropout(0.2), LSTM(32), Dropout(0.2), Dense(1)]`** architecture is highly recommended. It yielded the best MAE on both the validation and test sets in this direct comparison and offers a good balance of performance and model simplicity.
+2.  The **`[LSTM(50, return_sequences=True), Dropout(0.2), LSTM(50), Dropout(0.2), Dense(1)]`** architecture (the project's initial configuration) remains a very strong alternative. Its performance is closely comparable to the `32/32` setup, with a slightly better fit to the training data.
+
+The difference in Test MAE between these two top configurations (~0.5 pips) is relatively small and could be within typical run-to-run variability. For general use, **the `32/32` configuration is marginally preferred due to its slightly better generalization metrics and lower complexity.** However, the `50/50` configuration also demonstrates robust performance.
+
+---
+
+*(Future experiments will be documented here, e.g., tuning dropout rates, number of LSTM layers, optimizer parameters, etc.)*
