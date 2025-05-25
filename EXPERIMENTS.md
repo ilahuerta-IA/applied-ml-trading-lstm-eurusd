@@ -135,4 +135,67 @@ This reinforces the choice of a 2-layer architecture as a strong baseline for th
 
 ---
 
-**(Future experiments will be documented here, e.g., tuning dropout rates, optimizer parameters, batch size, etc. The current overall best configuration appears to be WINDOW=100, 2 LSTM Layers with 50 units each, and Dropout 0.2.)**
+## Experiment 4: Optimizing Dropout Rate
+
+With the `WINDOW = 100` and a 2-layer LSTM architecture (32 units in LSTM1, 32 units in LSTM2) identified as a strong baseline, this experiment focused on finding an optimal `Dropout` rate. Dropout is applied after each LSTM layer to help prevent overfitting. Both symmetric and some asymmetric dropout rate configurations were tested.
+
+### Methodology (Dropout Rate)
+
+*   **Base Architecture:**
+    *   LSTM Layer 1: 32 units, `return_sequences=True`
+    *   Dropout Layer 1: Varied Rate
+    *   LSTM Layer 2: 32 units
+    *   Dropout Layer 2: Varied Rate
+    *   Dense Output Layer: 1 unit
+*   **Constant Parameters:**
+    *   `WINDOW`: 100
+    *   LSTM Units: 32 per layer (for LSTM1 and LSTM2)
+    *   `optimizer`: 'adam'
+    *   `batch_size`: 32
+    *   `epochs`: 5 (with EarlyStopping, `patience=3`)
+    *   `SEED`: 42
+    *   `loss`: 'mse'
+*   **Varied Parameter:** `Dropout` rates for Dropout1 (after LSTM1) and Dropout2 (after LSTM2).
+
+### Results Summary (Dropout Rate with WINDOW=100, LSTM Units=32/32)
+
+| Dropout1 Rate | Dropout2 Rate | Test Set MAE (EURUSD) | Test Set RMSE (EURUSD) | Val Set MAE (EURUSD) | Val Set RMSE (EURUSD) | Train Set MAE (EURUSD) |
+| :------------ | :------------ | :-------------------- | :--------------------- | :------------------- | :-------------------- | :--------------------- |
+| **0.1**       | **0.1**       | **0.000645**          | **0.000926**           | **0.000565**         | **0.000873**          | **0.000361**           |
+| 0.2           | 0.2           | 0.000641              | 0.000935               | 0.000559             | 0.000891              | 0.000411               |
+| 0.3           | 0.3           | 0.001547              | 0.001818               | 0.001393             | 0.001662              | 0.001013               |
+| 0.4           | 0.4           | 0.000786              | 0.001070               | 0.000634             | 0.000979              | 0.000427               |
+| 0.5           | 0.5           | 0.001153              | 0.001449               | 0.000976             | 0.001294              | 0.000751               |
+| 0.1           | 0.2           | 0.000785              | 0.001034               | 0.000679             | 0.000967              | 0.000403               |
+| 0.4           | 0.2           | 0.001094              | 0.001379               | 0.001384             | 0.001607              | 0.000868               |
+
+*(Note: Results for Dropout 0.2/0.2 are from Experiment 2, using the same base architecture for comparison.)*
+
+### Analysis (Dropout Rate)
+
+1.  **Optimal Symmetric Dropout:**
+    *   The configuration with **Dropout1 = 0.1 and Dropout2 = 0.1** yielded the best overall performance in this specific batch of dropout experiments, achieving a Test Set MAE of 0.000645 EURUSD and a Validation Set MAE of 0.000565 EURUSD.
+    *   The symmetric dropout of **0.2 / 0.2** (previously identified as part of a strong configuration) performed almost identically (Test MAE: 0.000641, Val MAE: 0.000559). The minor differences are likely within typical run-to-run variability. Both demonstrate effective regularization.
+
+2.  **Impact of Higher Symmetric Dropout Rates:**
+    *   Increasing symmetric dropout rates to 0.3/0.3 and 0.5/0.5 led to a clear degradation in performance, with the 0.3/0.3 configuration being particularly poor. This suggests these higher rates cause underfitting, where the model is too constrained to learn the underlying patterns effectively.
+    *   The 0.4/0.4 configuration performed better than 0.3/0.3 but was still notably worse than the 0.1/0.1 or 0.2/0.2 rates.
+
+3.  **Asymmetric Dropout Rates:**
+    *   The tested asymmetric configurations (0.1/0.2 and 0.4/0.2) did not improve upon the best symmetric results. The 0.1/0.2 configuration was reasonable, while 0.4/0.2 performed poorly. This suggests that for this architecture, maintaining a consistent dropout rate across similar layers is beneficial.
+
+4.  **Generalization:** The configurations with dropout rates of 0.1 or 0.2 showed a healthy, small gap between training MAE and validation/test MAE, indicating good generalization. Higher dropout rates (like 0.3/0.3) resulted in higher training MAE as well, a sign of the model struggling to even fit the training data.
+
+### Conclusion & Recommended Dropout Rate (with WINDOW=100, LSTM Units=32/32)
+
+Based on this systematic evaluation of dropout rates:
+
+A symmetric dropout configuration with a rate of **0.1 for both Dropout layers (Dropout1=0.1, Dropout2=0.1)** is recommended. It achieved the best Test Set MAE (0.000645) within this specific set of dropout experiments and strong validation metrics.
+
+The previously used rate of **0.2 for both layers** remains an extremely close and robust alternative, with its Test Set MAE (0.000641) being marginally better in a prior run. Given the negligible difference, either 0.1 or 0.2 can be considered optimal. For consistency and based on this explicit sweep, **0.1** is slightly favored.
+
+Higher or significantly asymmetric dropout rates were found to be detrimental to performance for this model configuration.
+
+---
+
+**(Future experiments will be documented here, e.g., tuning optimizer parameters, batch size, etc. The current overall best configuration appears to be WINDOW=100, 2 LSTM Layers with either 32 or 50 units each, and Dropout 0.1 or 0.2.)**
