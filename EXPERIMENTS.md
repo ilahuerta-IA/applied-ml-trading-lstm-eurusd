@@ -198,4 +198,58 @@ Higher or significantly asymmetric dropout rates were found to be detrimental to
 
 ---
 
-**(Future experiments will be documented here, e.g., tuning optimizer parameters, batch size, etc. The current overall best configuration appears to be WINDOW=100, 2 LSTM Layers with either 32 or 50 units each, and Dropout 0.1 or 0.2.)**
+## Experiment 5: Optimizing Epochs and EarlyStopping Patience
+
+This experiment aimed to find an optimal balance between the maximum number of training `epochs` and the `patience` parameter for the `EarlyStopping` callback. The goal was to allow the model sufficient training time to learn effectively while preventing overfitting, using the best configuration identified from previous experiments.
+
+### Methodology (Epochs & Patience)
+
+*   **Base Architecture (from previous best configurations):**
+    *   `WINDOW`: 100
+    *   LSTM Layers: 2 (LSTM1 with 32 units, `return_sequences=True`; LSTM2 with 32 units)
+    *   `Dropout`: 0.1 (applied symmetrically after each LSTM layer)
+*   **Constant Training Parameters:**
+    *   `batch_size`: 32
+    *   `SEED`: 42
+    *   `optimizer`: 'adam'
+    *   `loss`: 'mse'
+*   **Varied Parameters:**
+    *   Maximum `epochs` for training.
+    *   `patience` for `EarlyStopping` (monitoring `val_loss`, with `restore_best_weights=True`).
+
+### Results Summary (Epochs & Patience)
+
+| Max Epochs | Patience | Best `val_loss` Epoch | Test Set MAE (EURUSD) | Test Set RMSE (EURUSD) | Val Set MAE (EURUSD) | Val Set RMSE (EURUSD) | Train Set MAE (EURUSD) | Min `val_loss` (Scaled) |
+| :--------- | :------- | :-------------------- | :-------------------- | :--------------------- | :------------------- | :-------------------- | :--------------------- | :---------------------- |
+| 5          | 3        | 5                     | 0.000645              | 0.000926               | 0.000565             | 0.000873              | 0.000361               | 1.2299e-04              |
+| 10         | 5        | 10                    | 0.000586              | 0.000777               | 0.000544             | 0.000748              | 0.000348               | 8.6664e-05              |
+| 15         | 7        | 14                    | 0.000702              | 0.000883               | 0.000724             | 0.000899              | 0.000510               | 6.4743e-05              |
+| **20**     | **10**   | **17**                | **0.000381**          | **0.000542**           | **0.000345**         | **0.000525**          | **0.000209**           | **3.9798e-05**          |
+| 20         | 13       | 12                    | 0.000520              | 0.000677               | 0.000393             | 0.000597              | 0.000315               | 4.7754e-05              |
+
+*(Note: "Best `val_loss` Epoch" indicates the epoch at which the minimum validation loss was recorded during that training run. `restore_best_weights=True` ensures these weights are used for the final model.)*
+
+### Analysis (Epochs & Patience)
+
+1.  **Impact of Increased Training Duration and Patience:** The results clearly demonstrate a significant benefit from allowing longer training periods (higher maximum `epochs`) coupled with increased `EarlyStopping` `patience`.
+    *   The configuration with **`epochs=20` and `patience=10`** achieved substantially lower MAE and RMSE values across all datasets (Training, Validation, and Test) compared to configurations with fewer epochs or lower patience. The model found its best validation loss at epoch 17 in this run.
+
+2.  **Finding a Better Minimum:** By extending the training duration and patience, the model was able to navigate the loss landscape more effectively and converge to a state with a significantly lower validation loss (min `val_loss` of `3.9798e-05` for Epochs(20)/Patience(10)). This superior state directly translated to improved generalization on the test set.
+
+3.  **Comparison of (20,10) vs. (20,13):**
+    *   Interestingly, the `Epochs(20)/Patience(13)` run found its best `val_loss` earlier, at epoch 12 (`4.7754e-05`), and its test set performance (MAE 0.000520) was not as strong as the `Epochs(20)/Patience(10)` run (MAE 0.000381, best `val_loss` at epoch 17).
+    *   This highlights that while higher patience gives more room, the stochastic nature of training means the exact trajectory to the best minimum can vary. The (20,10) run happened to find a deeper (better) `val_loss` minimum later in its training.
+
+4.  **Avoid Premature Stopping:** Shorter training durations (e.g., 5 or 10 epochs) or very low patience values likely caused the training to terminate before the model could reach its optimal state, even if `EarlyStopping` wasn't explicitly triggered by max epochs.
+
+### Conclusion & Recommended Epochs/Patience Configuration
+
+Based on this comprehensive evaluation of epochs and `EarlyStopping` patience:
+
+The configuration of **maximum `epochs = 20` with an `EarlyStopping` `patience = 10`** is strongly recommended. This setup yielded the best performance by a significant margin, achieving a Test Set MAE of **0.000381 EURUSD**.
+
+This result underscores the importance of allowing the model sufficient opportunity to train and explore, with an appropriate patience setting to prevent premature stopping while still guarding against significant overfitting if `val_loss` consistently degrades. The model weights corresponding to the epoch with the minimum `val_loss` (epoch 17 in the best run) are used for the final evaluation.
+
+---
+
+**(Future experiments, if any, will be documented here. The current best overall configuration identified through these experiments is: `WINDOW=100`, 2 LSTM Layers with 32 units each, `Dropout=0.1` (symmetric), `epochs=20`, and `patience=10`.)**
