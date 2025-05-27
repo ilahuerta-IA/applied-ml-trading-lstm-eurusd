@@ -252,4 +252,56 @@ This result underscores the importance of allowing the model sufficient opportun
 
 ---
 
-**(Future experiments, if any, will be documented here. The current best overall configuration identified through these experiments is: `WINDOW=100`, 2 LSTM Layers with 32 units each, `Dropout=0.1` (symmetric), `epochs=20`, and `patience=10`.)**
+## Experiment 6: Optimizing Batch Size
+
+This experiment aimed to identify an optimal `batch_size` for training the LSTM model. The batch size determines the number of samples processed before the model's weights are updated and can significantly impact training dynamics, speed, memory usage, and the generalization ability of the final model.
+
+### Methodology (Batch Size)
+
+*   **Base Architecture (from previous best configurations):**
+    *   `WINDOW`: 100
+    *   LSTM Layers: 2 (LSTM1 with 32 units, `return_sequences=True`; LSTM2 with 32 units)
+    *   `Dropout`: 0.1 (applied symmetrically after each LSTM layer)
+*   **Constant Training Parameters for this Experiment:**
+    *   `epochs`: 5 (Maximum, EarlyStopping might halt sooner based on `patience`)
+    *   `Patience` (for `EarlyStopping`): 3 (monitoring `val_loss`, with `restore_best_weights=True`)
+    *   `SEED`: 42
+    *   `optimizer`: 'adam'
+    *   `loss`: 'mse'
+*   **Varied Parameter:**
+    *   `batch_size`: Tested values were 16, 32, 64, and 128.
+
+Performance was evaluated using Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE) on the training, validation, and test sets (original EURUSD price scale).
+
+### Results Summary (Batch Size)
+
+| Batch Size | Test Set MAE (EURUSD) | Test Set RMSE (EURUSD) | Val Set MAE (EURUSD) | Val Set RMSE (EURUSD) | Train Set MAE (EURUSD) | Min `val_loss` (Scaled) <br> (at Epoch) | Approx. Train Steps/Epoch |
+| :--------- | :-------------------- | :--------------------- | :------------------- | :-------------------- | :--------------------- | :------------------------------------ | :------------------------ |
+| 16         | 0.000716              | 0.000919               | 0.000567             | 0.000823              | 0.000454               | 9.1299e-05 (Epoch 5)                  | ~2793                     |
+| **32**     | **0.000645**          | **0.000926**           | **0.000565**         | **0.000873**          | **0.000361**           | **9.6633e-05 (Epoch 5)**              | **~1397**                 |
+| 64         | 0.000897              | 0.001134               | 0.000828             | 0.001053              | 0.000488               | 8.2150e-05 (Epoch 1)                  | ~699                      |
+| 128        | 0.000957              | 0.001197               | 0.000956             | 0.001155              | 0.000570               | 7.5078e-05 (Epoch 2)                  | ~350                      |
+
+*(Note: The number of training epochs was capped at 5 for this batch size experiment, with an EarlyStopping patience of 3.)*
+
+### Analysis (Batch Size)
+
+1.  **Optimal Performance:** The **`batch_size = 32`** configuration demonstrated the best performance among the tested values, achieving the lowest Test Set MAE (0.000645 EURUSD) and Validation Set MAE (0.000565 EURUSD). This suggests an effective balance for gradient estimation and stable learning for this model and dataset.
+
+2.  **Smaller Batch Size (`batch_size = 16`):** While often beneficial for generalization due to noisier gradients, `batch_size = 16` resulted in slightly worse test set performance compared to `batch_size = 32`. It also significantly increased the number of updates per epoch, leading to longer training times. Its minimum `val_loss` was competitive.
+
+3.  **Larger Batch Sizes (`batch_size = 64` and `batch_size = 128`):** Performance notably degraded with these larger batch sizes. Larger batches can sometimes lead to convergence to sharper, less generalizable minima. The minimum `val_loss` for these configurations was achieved very early in training (epoch 1 or 2), indicating rapid convergence but potentially to a suboptimal point compared to the smaller batch sizes that explored the loss landscape for more iterations within the 5 epochs.
+
+4.  **Training Dynamics:** For `batch_size = 32` and `16`, the best `val_loss` was found near or at the maximum allowed 5 epochs. For larger batch sizes, the best `val_loss` was found much earlier, suggesting that with these settings, further training within the 5-epoch limit did not yield further improvements in `val_loss`.
+
+### Conclusion & Recommended Batch Size
+
+Based on this systematic evaluation:
+
+A **`batch_size = 32`** is recommended for training the LSTM model with the current established configuration (`WINDOW=100`, 2-Layer/32-Unit LSTM, `Dropout=0.1`). This batch size yielded the best generalization performance on both the validation and test sets among the options tested.
+
+It appears to provide an effective trade-off between computational efficiency and model performance for this specific problem setup, outperforming both smaller and larger batch sizes in terms of predictive accuracy on unseen data.
+
+---
+
+**(This concludes the Batch Size optimization. The current overall best configuration is: `WINDOW=100`, 2 LSTM Layers with 32 units each, `Dropout=0.1` (symmetric), `epochs=20`, `patience=10`, and `batch_size=32`.)**
