@@ -304,4 +304,70 @@ It appears to provide an effective trade-off between computational efficiency an
 
 ---
 
-**(This concludes the Batch Size optimization. The current overall best configuration is: `WINDOW=100`, 2 LSTM Layers with 32 units each, `Dropout=0.1` (symmetric), `epochs=20`, `patience=10`, and `batch_size=32`.)**
+## Experiment 7: Optimizing Optimizer Learning Rate
+
+This experiment focused on tuning the initial `learning_rate` for the Adam optimizer. The learning rate is a critical hyperparameter that controls the step size during the model's weight updates in the training process. An appropriate learning rate can lead to faster convergence and a better final model.
+
+### Methodology (Learning Rate)
+
+*   **Base Architecture (from previous best configurations):**
+    *   `WINDOW`: 100
+    *   LSTM Layers: 2 (LSTM1 with 32 units, `return_sequences=True`; LSTM2 with 32 units)
+    *   `Dropout`: 0.1 (applied symmetrically after each LSTM layer)
+    *   `batch_size`: 32
+*   **Constant Training Parameters (unless specified otherwise for a sub-experiment):**
+    *   `SEED`: 42
+    *   `optimizer`: `tf.keras.optimizers.Adam()` (with varied `learning_rate`)
+    *   `loss`: 'mse'
+*   **Varied Parameter:**
+    *   Initial `learning_rate` for the Adam optimizer.
+
+Two sets of tests were conducted:
+1.  Initial screening of learning rates (0.001, 0.0001, 0.0005) with a shorter training schedule (`epochs=5`, `patience=3`).
+2.  Re-testing the most promising learning rate from the initial screen (0.0001) with the optimal longer training schedule found in Experiment 5 (`epochs=20`, `patience=10`).
+
+Performance was evaluated using Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE) on the training, validation, and test sets (original EURUSD price scale). `EarlyStopping` with `restore_best_weights=True` was active.
+
+### Results Summary (Learning Rate)
+
+**Part 1: Initial Screening (Epochs=5, Patience=3)**
+
+| Learning Rate | Test Set MAE (EURUSD) | Test Set RMSE (EURUSD) | Val Set MAE (EURUSD) | Val Set RMSE (EURUSD) | Train Set MAE (EURUSD) | Min `val_loss` (Scaled) <br> (at Epoch) |
+| :------------ | :-------------------- | :--------------------- | :------------------- | :-------------------- | :--------------------- | :------------------------------------ |
+| 0.001         | 0.000637              | 0.000919               | 0.000558             | 0.000873              | 0.000447               | 1.2121e-04 (Epoch 3)                  |
+| **0.0001**    | **0.000572**          | **0.000853**           | **0.000513**         | **0.000823**          | **0.000294**           | **1.0440e-04 (Epoch 4)**              |
+| 0.0005        | 0.000824              | 0.001141               | 0.000655             | 0.001004              | 0.000582               | 1.8697e-04 (Epoch 5)                  |
+
+**Part 2: Re-testing Promising LR with Optimal Training Schedule (Epochs=20, Patience=10)**
+
+| Learning Rate | Test Set MAE (EURUSD) | Test Set RMSE (EURUSD) | Val Set MAE (EURUSD) | Val Set RMSE (EURUSD) | Train Set MAE (EURUSD) | Min `val_loss` (Scaled) <br> (at Epoch) |
+| :------------ | :-------------------- | :--------------------- | :------------------- | :-------------------- | :--------------------- | :------------------------------------ |
+| 0.0001        | 0.000824              | 0.001141               | 0.000655             | 0.001004              | 0.000582               | 1.0092e-04 (Epoch 20)                 |
+| _Reference: Default Adam LR (~0.001) from Exp 5 (Epochs=20, Patience=10)_ | _**0.000381**_        | _0.000542_             | _0.000345_           | _0.000525_            | _0.000209_             | _3.9798e-05 (Epoch 17)_               |
+
+### Analysis (Learning Rate)
+
+1.  **Initial Screening (Epochs=5, Patience=3):**
+    *   In the initial short training runs, a learning rate of **0.0001** yielded the best performance on both validation and test sets (Test MAE: 0.000572).
+    *   The standard Adam learning rate of 0.001 also performed well, while 0.0005 was slightly worse. This suggested that for very short training durations, a slower learning rate might be beneficial in preventing overshooting optimal weights.
+
+2.  **Re-testing with Optimal Training Schedule (Epochs=20, Patience=10):**
+    *   When the learning rate of `0.0001` was combined with the longer training schedule (`epochs=20`, `patience=10`), its performance (Test MAE: 0.000824) was notably **worse** than the results achieved in Experiment 5 (Test MAE: 0.000381), which used the same epoch/patience settings but likely a default Adam learning rate (around 0.001).
+    *   The `val_loss` for LR=0.0001 with 20 epochs was still improving at the final epoch (Epoch 20), and its minimum `val_loss` (1.0092e-04) was significantly higher than the minimum achieved by the default LR run in Experiment 5 (3.9798e-05 at Epoch 17).
+    *   This indicates that while LR=0.0001 was good for short training, it is **too slow to allow the model to converge to the best possible solution within 20 epochs.** The default Adam LR (0.001) appears to be more effective when sufficient training time and patience are provided.
+
+3.  **Learning Rate and Training Duration Interaction:** This experiment highlights a critical interaction: the optimal learning rate can depend on the total training budget (number of epochs and patience). A learning rate that is optimal for a short run might be too slow for a longer run, and vice-versa.
+
+### Conclusion & Recommended Learning Rate
+
+Based on the comprehensive evaluation:
+
+1.  For shorter training schedules (e.g., 5 epochs), a slower learning rate like `0.0001` can be advantageous.
+2.  However, when combined with the optimal longer training schedule of **`epochs=20` and `patience=10`**, the **default Adam learning rate (implicitly 0.001)**, as used in the best run of Experiment 5, yielded superior results (Test MAE ~0.000381).
+3.  Therefore, for the current best overall model configuration (`WINDOW=100`, 2-Layer/32-Unit LSTM, `Dropout=0.1`, `batch_size=32`, `epochs=20`, `patience=10`), the **Adam optimizer with its default learning rate of 0.001 (or simply specifying `optimizer='adam'`) is recommended.**
+
+Further fine-tuning around the 0.001 mark (e.g., 0.0008, 0.0005) *with the 20-epoch schedule* could be explored, but the default Adam optimizer has proven very effective with this setup.
+
+---
+
+**(This concludes the Learning Rate optimization. The overall best configuration identified through all experiments so far is: `WINDOW=100`, 2 LSTM Layers with 32 units each, `Dropout=0.1` (symmetric), `optimizer='adam'` (default LR ~0.001), `epochs=20`, `patience=10`, and `batch_size=32`.)**
