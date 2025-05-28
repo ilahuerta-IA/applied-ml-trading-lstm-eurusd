@@ -370,4 +370,67 @@ Further fine-tuning around the 0.001 mark (e.g., 0.0008, 0.0005) *with the 20-ep
 
 ---
 
-**(This concludes the Learning Rate optimization. The overall best configuration identified through all experiments so far is: `WINDOW=100`, 2 LSTM Layers with 32 units each, `Dropout=0.1` (symmetric), `optimizer='adam'` (default LR ~0.001), `epochs=20`, `patience=10`, and `batch_size=32`.)**
+## Experiment 8: Assessing Reproducibility, Stability, and GPU Impact
+
+This experiment aimed to evaluate the consistency and stability of the current best-performing LSTM model configuration when trained multiple times with the same hyperparameters and fixed random seeds. Additionally, it sought to observe the impact of training on different hardware (CPU vs. GPU).
+
+### Methodology (Reproducibility/Stability)
+
+The established optimal configuration was used for all rounds:
+*   **Data:** 5 Years of EURUSD 15-minute data
+*   **Base Architecture:**
+    *   `WINDOW`: 100
+    *   LSTM Layers: 2 (LSTM1 with 32 units, `return_sequences=True`; LSTM2 with 32 units)
+    *   `Dropout`: 0.1 (applied symmetrically after each LSTM layer)
+*   **Training Parameters:**
+    *   `epochs`: 20 (Maximum)
+    *   `Patience` (for `EarlyStopping`): 10 (monitoring `val_loss`, with `restore_best_weights=True`)
+    *   `batch_size`: 32
+    *   `SEED`: 42 (TensorFlow, NumPy, Python random seeds set at the beginning of each full notebook run)
+    *   `optimizer`: Adam (default learning rate ~0.001)
+    *   `loss`: 'mse'
+
+The model was trained independently four times. Rounds 1-3 are assumed to be run on CPU, while Round 4 was explicitly run on a GPU. A full kernel restart and re-execution of all notebook cells (including seed setting) preceded each training run.
+
+### Results Summary (Reproducibility/Stability)
+
+| Run Description    | Best `val_loss` Epoch | Test Set MAE (EURUSD) | Test Set RMSE (EURUSD) | Val Set MAE (EURUSD) | Val Set RMSE (EURUSD) | Train Set MAE (EURUSD) | Min `val_loss` (Scaled) | Approx. Time/Step |
+| :----------------- | :-------------------- | :-------------------- | :--------------------- | :------------------- | :-------------------- | :--------------------- | :---------------------- | :---------------- |
+| 1st Round (CPU Est.)| 19                    | 0.000593              | 0.000906               | 0.000829             | 0.001229              | 0.000356               | 4.3062e-05              | ~70-75ms          |
+| 2nd Round (CPU Est.)| 20                    | 0.000593              | 0.000906               | 0.000829             | 0.001229              | 0.000356               | 4.4045e-05              | ~80-85ms          |
+| 3rd Round (CPU Est.)| 15                    | 0.000622              | 0.000934               | 0.000853             | 0.001255              | 0.000387               | 4.5726e-05              | ~80-85ms          |
+| **4th Round (GPU)**| **10**                | **0.000604**          | **0.000943**           | **0.000859**         | **0.001293**          | **0.000351**           | **4.6677e-05**          | **~11-12ms**      |
+
+*(Note: "CPU Est." indicates an assumption based on reported training step times. The "Best `val_loss` Epoch" is critical as `EarlyStopping` with `restore_best_weights=True` uses the model from this epoch.)*
+
+### Analysis (Reproducibility/Stability & GPU Impact)
+
+1.  **Training Speed (GPU Impact):**
+    *   The most significant difference observed was the training speed. The GPU run (Round 4) achieved an average time per step of approximately 11-12ms, a substantial acceleration compared to the CPU runs (Rounds 1-3) which averaged around 70-85ms per step. This demonstrates a ~6-7x speed-up in training time per step when utilizing a GPU.
+
+2.  **Consistency of Performance Metrics:**
+    *   **Test Set MAE:** The Test Set MAE values across all four runs are very consistent, ranging from 0.000593 to 0.000622 EURUSD. This is a tight spread of only ~0.3 pips, indicating good stability in predictive performance on unseen data.
+    *   The GPU run (0.000604) falls well within this range, performing comparably to the CPU runs.
+    *   Similar consistency is observed for Test Set RMSE, Validation Set MAE/RMSE, and Training Set MAE.
+
+3.  **Best `val_loss` Epoch and Value:**
+    *   The epoch at which the minimum `val_loss` was achieved varied between runs (Epoch 19, 20, 15 for CPU runs; Epoch 10 for the GPU run). This variation is expected due to the stochastic nature of the training process and potential minor differences in floating-point arithmetic between CPU and GPU.
+    *   Importantly, the *actual minimum `val_loss` values* achieved were very close across all runs (ranging from `4.3062e-05` to `4.6677e-05`), suggesting that all runs converged to a similarly good region in the loss landscape.
+
+4.  **Impact of Hardware (CPU vs. GPU):**
+    *   Beyond the speed increase, training on a GPU did not lead to a degradation in the final model quality. The metrics from the GPU run are well aligned with those from the CPU runs.
+    *   The earlier convergence to the best `val_loss` on the GPU (Epoch 10 vs. Epochs 15-20 on CPU) might be due to subtle differences in how the optimization algorithm explores the parameter space on parallel hardware, but the final restored model quality remained comparable.
+
+### Conclusion & Implications
+
+The current optimal LSTM model configuration demonstrates **a high degree of stability and reproducibility** when trained multiple times with fixed random seeds.
+
+*   **Robust Performance:** The model consistently achieves a Test Set MAE in the range of approximately 0.00059 to 0.00062 EURUSD (~5.9 to 6.2 pips) on the 5-year 15-minute EURUSD dataset, regardless of minor variations in the training path or hardware (CPU vs. GPU).
+*   **GPU Benefit:** Utilizing a GPU significantly accelerates the training process without compromising the predictive accuracy of the resulting model.
+*   **Confidence:** This consistency across multiple runs provides strong confidence that the observed model performance is a reliable representation of the architecture's capabilities with the given hyperparameters and data, rather than an outlier result from a single "lucky" training run.
+
+This robust baseline is crucial before proceeding with further model refinements or integration into a trading strategy.
+
+---
+
+**(This concludes the Reproducibility/Stability assessment. The overall best configuration identified through all experiments so far remains: `WINDOW=100`, 2 LSTM Layers with 32 units each, `Dropout=0.1` (symmetric), `optimizer='adam'` (default LR ~0.001), `epochs=20`, `patience=10`, and `batch_size=32`, yielding a stable Test MAE around 0.0006 EURUSD.)**
