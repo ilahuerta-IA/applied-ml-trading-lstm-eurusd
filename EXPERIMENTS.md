@@ -494,6 +494,61 @@ This series of experiments has provided significant insights into optimizing the
 
 The next steps will involve further analysis of these top models, including directional accuracy, and proceeding with feature engineering (e.g., adding SMA50) on the chosen primary configuration.
 
+Okay, here is the analysis of Experiment 10 in Markdown format, ready to be added to your `EXPERIMENTS.md` file.
+
 ---
 
-**(Future experiments will focus on feature engineering for the selected best model configuration.)**
+### **Experiment 10: Incorporating SMA50 as an Input Feature (5-minute Data)**
+
+**Objective:**
+To determine if adding the 50-period Simple Moving Average (SMA50) of the 'Close' price as an additional input feature improves the predictive performance of the LSTM model on 5-minute EURUSD data.
+
+**Methodology:**
+This experiment built upon the previously identified optimal configuration from Experiment 9 ("10yr, 5m, W30"). The primary modification was to the data preprocessing to include SMA50 as an input feature alongside the 'Close' price.
+
+*   **Data:** 10 Years, 5-minute timeframe (EURUSD).
+*   **Input Features:** Changed from `['Close']` to `['Close', 'SMA50']`.
+    *   SMA50 was calculated using a 50-period rolling mean on the 'Close' price.
+    *   Rows with `NaN` values (the first 49 rows due to SMA50 calculation) were dropped from the dataset before splitting.
+*   **Data Scaling:** `MinMaxScaler` was fitted on both `['Close', 'SMA50']` for input features. A *separate* `MinMaxScaler` was used and fitted *only* on `['Close']` for the target variable (`y_data_scaled_target`) to ensure correct inverse transformation of predictions.
+*   **`create_dataset_multifeature`:** A modified version of the `create_dataset` function was used to handle multiple input features.
+*   **Model Architecture:** The `input_shape` of the first LSTM layer was adjusted to `(WINDOW, 2)` to accommodate the two input features.
+    *   `WINDOW`: 30
+    *   LSTM Layers: 2 (LSTM1 with 32 units, `return_sequences=True`; LSTM2 with 32 units)
+    *   `Dropout`: 0.1 (symmetric, after each LSTM layer)
+*   **Training Parameters:** All other training parameters remained consistent with the optimal configuration identified in previous experiments.
+    *   `optimizer`: Adam (default learning rate ~0.001)
+    *   `epochs`: 20 (Maximum, `EarlyStopping` might halt sooner)
+    *   `Patience` (for `EarlyStopping`): 10 (monitoring `val_loss`, with `restore_best_weights=True`)
+    *   `batch_size`: 32
+    *   `SEED`: 42
+
+**Crucial Evaluation Note:**
+During the execution of this experiment, it was identified that the `validation_data` parameter in `model.fit()` was inadvertently set to `(x_test, y_test)` instead of `(x_val, y_val)` in a previous iteration, leading to data leakage. This has been corrected for this run, ensuring that `EarlyStopping` and validation loss monitoring are performed strictly on the unseen validation set. The results below reflect the corrected, fair evaluation.
+
+### **Results Summary (Incorporating SMA50 - 10yr, 5m Data)**
+
+| Model Configuration                   | Test Set MAE (EURUSD) | Test Set RMSE (EURUSD) | Val Set MAE (EURUSD) | Val Set RMSE (EURUSD) | Train Set MAE (EURUSD) | Min `val_loss` (Scaled) <br> (at Epoch) | Early Stopping Epoch |
+| :------------------------------------ | :-------------------- | :--------------------- | :------------------- | :-------------------- | :--------------------- | :------------------------------------ | :------------------- |
+| **Previous Best (Close only)**        | **0.000275**          | **0.000443**           | **0.000249**         | **0.000525**          | **0.000209**           | **1.0225e-05 (Ep 12)**                | 20                   |
+| Current (Close + SMA50)               | 0.000525              | 0.000666               | 0.000897             | 0.001317              | 0.000655               | 3.5599e-05 (Ep 2)                     | 12                   |
+
+### **Analysis:**
+
+1.  **Significant Performance Degradation:**
+    *   Adding the SMA50 as an input feature, with the current LSTM architecture and hyperparameter settings, resulted in a **substantial worsening of predictive performance** across all datasets.
+    *   The **Test Set MAE increased by approximately 91%** (from 0.000275 to 0.000525 EURUSD).
+    *   The **Validation Set MAE also deteriorated drastically**, showing an increase of about 260% (from 0.000249 to 0.001216 EURUSD).
+    *   Even the Training Set MAE increased, indicating that the model struggled to fit the training data as effectively as the simpler 'Close only' model.
+
+2.  **Early Stopping Behavior:**
+    *   The model with SMA50 inputs stopped training much earlier (Epoch 12, restoring from Epoch 2) compared to the 'Close only' model (Epoch 20, restoring from Epoch 12). This suggests that the model quickly hit a plateau or started struggling to generalize when SMA50 was included.
+    *   The minimum `val_loss` achieved (`3.5599e-05`) was significantly higher than the 'Close only' model's best `val_loss` (`1.0225e-05`), further confirming its poorer performance.
+
+3.  **Reasons for Degradation (Hypothesized):**
+    *   **Feature Redundancy/Collinearity:** The Simple Moving Average (SMA50) is highly correlated with the 'Close' price itself. It's possible the LSTM, already proficient at processing sequential 'Close' prices, doesn't gain new, orthogonal predictive power from SMA50. Instead, its inclusion might introduce redundancy or make the optimization problem more complex and harder for the existing architecture to solve effectively.
+    *   **Insufficient Capacity or Mismatched Architecture:** When new features are added, the model's capacity (e.g., number of units in LSTM layers) or overall architecture might need to be re-tuned to effectively learn from the expanded input space. The current 32-unit layers might not be optimal for inputs that include SMA50.
+    *   **Noise Introduction:** If SMA50, in its raw form, doesn't provide precise short-term signals relevant to 5-minute predictions beyond what 'Close' already offers, it could simply add noise to the input, making the learning task more challenging.
+
+
+---
