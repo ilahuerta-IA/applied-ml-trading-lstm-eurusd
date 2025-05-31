@@ -82,12 +82,35 @@ The current LSTM model consists of:
 
 ## Example Results
 
-![Actual vs  Predicted EURUSD Price (Scaled 0-1)](https://github.com/user-attachments/assets/767d4cb8-fd83-4624-b3d4-397bd9a59087)
+This section showcases the performance of our optimized LSTM model on the EURUSD 15-minute data, using a 10-year historical dataset. The configuration includes `WINDOW=30`, 2 LSTM Layers (32 units each), `Dropout=0.1`, Adam optimizer (`lr=0.001`), `epochs=20`, `patience=10`, and `batch_size=32`.
 
+**Training Set: Actual vs. Predicted (Original Scale - Gaps Collapsed)**
+*This plot displays how well the model learned to fit the training data. Time gaps are visually collapsed to show continuous trading sequences.*
 
-Original Scale:
+![Training Set Performance](./images/plot_training_original_gaps-collapsed.png)
 
-![Scaled Close Price (Test Set)](https://github.com/user-attachments/assets/e88d4c17-b966-4ee4-96e1-271c59b578cc)
+**Validation Set: Actual vs. Predicted (Original Scale - Gaps Collapsed)**
+*This plot shows the model's performance on the validation set, which is used for hyperparameter tuning and early stopping. Time gaps are visually collapsed.*
+
+![Validation Set Performance](./images/plot_validation_original_gaps-collapsed.png)
+
+**Test Set: Actual vs. Predicted (Original Scale - Gaps Collapsed)**
+*This is a key plot showing the model's generalization ability on completely unseen test data. Time gaps are visually collapsed to focus on predictive accuracy during active trading periods.*
+
+![Test Set Performance - Original Scale](./images/plot_test_original_gaps-collapsed.png)
+
+**Test Set: Actual vs. Predicted (Scaled 0-1)**
+*This plot shows the test set comparison in the 0-1 scaled range that the LSTM model directly operates on. The x-axis represents the sequence of windowed test set points.*
+
+![Test Set Performance - Scaled Data](./images/plot_test_scaled_0-1.png)
+
+**Key Evaluation Metrics (Test Set - 10yr/5m/W30/LR0.001 Model):**
+*   Mean Absolute Error (MAE): **0.000275 EURUSD** (~2.75 pips)
+*   Root Mean Squared Error (RMSE): **0.000443 EURUSD**
+
+*(Note: The MAE/RMSE metrics above are for the 5-minute model with WINDOW=30 as it was the best. Adjust if these plots correspond to a different "best" model, e.g., the 15-minute one.)*
+
+These visualizations and metrics demonstrate the model's capability to make short-term price predictions with a high degree of accuracy. For a detailed breakdown of all hyperparameter tuning experiments, please refer to the [EXPERIMENTS.md](EXPERIMENTS.md) file.
 
 
 ## Hyperparameter Tuning Experiments

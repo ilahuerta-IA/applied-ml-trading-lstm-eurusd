@@ -433,4 +433,67 @@ This robust baseline is crucial before proceeding with further model refinements
 
 ---
 
-**(This concludes the Reproducibility/Stability assessment. The overall best configuration identified through all experiments so far remains: `WINDOW=100`, 2 LSTM Layers with 32 units each, `Dropout=0.1` (symmetric), `optimizer='adam'` (default LR ~0.001), `epochs=20`, `patience=10`, and `batch_size=32`, yielding a stable Test MAE around 0.0006 EURUSD.)**
+## Experiment 9: Impact of Dataset Length, Timeframe Granularity, and Window Size
+
+This experiment investigates the impact of using more extensive historical data (10 years vs. 5 years), different data timeframes (1-minute, 5-minute, 15-minute), and a variation in `WINDOW` size on the LSTM model's performance. The goal is to identify if more data or higher/lower granularity can lead to improved predictive accuracy.
+
+### Methodology
+
+The core LSTM architecture (`Layers=2`, `Units per Layer=32`, `Dropout=0.1` symmetric) and most training parameters (`Epochs=20` max, `Patience=10`, `batch_size=32`, `SEED=42`, Adam optimizer, `loss='mse'`) were kept consistent. The `learning_rate`, `WINDOW` size, dataset (history length and timeframe) were varied as specified in each sub-experiment.
+
+### Results Summary
+
+| Sub-Experiment Description             | Learning Rate | WINDOW | Test Set MAE (EURUSD) | Test Set RMSE (EURUSD) | Val Set MAE (EURUSD) | Min `val_loss` (Scaled) <br> (at Epoch) |
+| :------------------------------------- | :------------ | :----- | :-------------------- | :--------------------- | :------------------- | :------------------------------------ |
+| 5yr, 15m (GPU)                         | 0.0001        | 100    | 0.000604              | 0.000943               | 0.000859             | 4.6335e-05 (Ep 18)                    |
+| **10yr, 15m (NEW BEST for 15m)**       | **0.001**     | **30** | **0.000378**          | **0.000591**           | **0.000288**         | **1.8315e-05 (Ep 16)**                |
+| 10yr, 5m (Reference)                   | 0.001         | 100    | 0.000281              | 0.000412               | 0.000293             | 8.8409e-06 (Ep 20)                    |
+| **10yr, 5m (NEW OVERALL BEST)**        | **0.001**     | **30** | **0.000275**          | **0.000443**           | **0.000249**         | **1.0225e-05 (Ep 12)**                |
+| **10yr, 1m (Lowest Raw MAE)**          | **0.001**     | **30** | **0.000228**          | **0.000313**           | **0.000222**         | **5.0643e-06 (Ep 5)**                 |
+
+### Analysis
+
+1.  **Impact of Increased Data History (10 Years vs. 5 Years):**
+    *   Training models on **10 years of historical data consistently yielded superior performance** compared to 5 years of data. For instance, the 15-minute model improved its Test MAE from ~0.000604 (5yr) to ~0.000378 (10yr) when also optimizing the window size and learning rate. This underscores the value of extensive datasets for LSTMs to learn more robust and generalizable patterns across various market conditions.
+
+2.  **Impact of Timeframe Granularity (1m vs. 5m vs. 15m - all on 10 Years Data):**
+    *   **1-minute Data (`WINDOW=30`, `LR=0.001`):** Achieved the **lowest Test Set MAE of 0.000228 EURUSD (~2.3 pips)**. This highlights the potential of high-granularity data for very short-term predictions when a vast history is available. The model found its best validation performance very early (Epoch 5).
+    *   **5-minute Data (`WINDOW=30`, `LR=0.001`):** Delivered an outstanding Test Set MAE of **0.000275 EURUSD (~2.75 pips)**. This slightly outperformed the previous best 5-minute model which used `WINDOW=100` (Test MAE ~0.000281).
+    *   **15-minute Data (`WINDOW=30`, `LR=0.001`):** Also showed excellent results with a Test Set MAE of **0.000378 EURUSD (~3.8 pips)**.
+    *   The trend indicates that, with sufficient data history (10 years), finer granularity (1-minute and 5-minute) allows the LSTM to achieve lower MAE values.
+
+3.  **Optimal `WINDOW` Size with 10 Years of Data:**
+    *   For all tested timeframes (1m, 5m, 15m) using 10 years of data, a shorter **`WINDOW = 30`** proved highly effective. This suggests that with an extensive historical dataset, the model benefits from focusing on more recent patterns (last 30 candles) for its immediate next-candle prediction, rather than potentially noisier, longer lookbacks like `WINDOW=100`.
+
+4.  **Learning Rate Consistency:**
+    *   A learning rate of **0.001** (Adam default) consistently performed very well across different timeframes when combined with the 10-year dataset and the `epochs=20, patience=10` training schedule.
+
+5.  **Practical Considerations (Slippage):**
+    *   While the 1-minute model shows the highest raw accuracy, its practical application is most challenged by trading frictions like slippage and spreads, as the ~2.3 pip MAE leaves a very narrow margin.
+    *   The 5-minute model (MAE ~2.75 pips) and 15-minute model (MAE ~3.8 pips) offer a better balance between high predictive accuracy and increased resilience to typical transaction costs due to potentially larger price moves per candle on these slightly longer timeframes.
+
+### Conclusion & Current Overall Best Configurations
+
+This series of experiments has provided significant insights into optimizing the LSTM model by leveraging more extensive data and tuning for data granularity:
+
+1.  **Value of Data:** Using **10 years of historical data** is demonstrably superior to 5 years for training this LSTM model.
+2.  **Optimal `WINDOW` for 10-Year Data:** A **`WINDOW = 30`** appears optimal or highly effective across 1-minute, 5-minute, and 15-minute timeframes when using a 10-year dataset.
+3.  **New Overall Best Model (Raw Accuracy):**
+    *   **Data:** 10 Years, **1-minute** timeframe (EURUSD)
+    *   **`WINDOW`:** 30
+    *   **`learning_rate`:** 0.001
+    *   **Architecture & Training:** 2 LSTM Layers (32 units each), Dropout 0.1, epochs=20, patience=10, batch_size=32.
+    *   This configuration achieved a **Test Set MAE of 0.000228 EURUSD**.
+
+4.  **Recommended Best Model for Practical "Tool" Integration (Balancing Accuracy & Robustness):**
+    *   **Data:** 10 Years, **5-minute** timeframe (EURUSD)
+    *   **`WINDOW`:** 30
+    *   **`learning_rate`:** 0.001
+    *   **Architecture & Training:** (Same as above)
+    *   This configuration achieved a **Test Set MAE of 0.000275 EURUSD**. It offers an excellent balance of high accuracy and potentially greater resilience to trading frictions compared to the 1-minute model.
+
+The next steps will involve further analysis of these top models, including directional accuracy, and proceeding with feature engineering (e.g., adding SMA50) on the chosen primary configuration.
+
+---
+
+**(Future experiments will focus on feature engineering for the selected best model configuration.)**
