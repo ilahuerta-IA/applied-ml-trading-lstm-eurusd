@@ -552,3 +552,31 @@ During the execution of this experiment, it was identified that the `validation_
 
 
 ---
+
+## Experiment 11: Final Model Configuration (LSTM Tool V1.0)
+
+This experiment consolidates the ultimate parameters and performance for the **LSTM Tool V1.0**, based on the entire hyperparameter optimization process and accounting for fair evaluation.
+
+### Methodology:
+The model was trained with the final selected hyperparameters and data characteristics. Performance was evaluated on the truly unseen test set after training on the chronological training and validation sets. Multiple runs were conducted to confirm stability.
+
+*   **Data:** 10 Years, 5-minute timeframe (EURUSD).
+*   **Input Features:** `['Close']` (only 'Close' price as input).
+*   **`WINDOW`:** 30.
+*   **Architecture:** 2 LSTM Layers (32 units each), Dropout 0.1 (symmetric).
+*   **Optimizer:** Adam (default learning rate ~0.001).
+*   **Training:** `epochs=20` (Maximum), `patience=10` (EarlyStopping, monitoring `val_loss`, `restore_best_weights=True`).
+*   **Batch Size:** 32.
+*   **SEED:** 42.
+*   **Target:** Next 'Close' price.
+
+### **Results Summary (LSTM Tool V1.0 Performance)**
+
+| Model Configuration                   | Test Set MAE (EURUSD) | Test Set RMSE (EURUSD) | Val Set MAE (EURUSD) | Val Set RMSE (EURUSD) | Train Set MAE (EURUSD) | Min `val_loss` (Scaled) <br> (at Epoch) | Early Stopping Epoch |
+| :------------------------------------ | :-------------------- | :--------------------- | :------------------- | :-------------------- | :--------------------- | :------------------------------------ | :------------------- |
+| **LSTM Tool V1.0 (Close only)**       | **0.000237**          | **0.000387**           | **0.000213**         | **0.000299**          | **0.000196**           | **7.7975e-06 (Ep 16)**                | 20                   |
+
+### **Conclusion (LSTM Tool V1.0):**
+The **LSTM Tool V1.0**, based on the 'Close' only input and the meticulously optimized hyperparameters, is confirmed to be a **high-performing and robust model** for 5-minute EURUSD price prediction. Its Test Set MAE of **0.000237 EURUSD** (approximately 2.37 pips) provides an excellent and fairly evaluated baseline for integration into an algorithmic trading strategy. This model will be used for further development in a separate Backtrader repository.
+
+---
